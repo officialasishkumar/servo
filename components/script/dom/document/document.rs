@@ -54,7 +54,7 @@ use script_traits::{DocumentActivity, ProgressiveWebMetricType};
 use servo_arc::Arc;
 use servo_base::cross_process_instant::CrossProcessInstant;
 use servo_base::generic_channel::GenericSend;
-use servo_base::id::WebViewId;
+use servo_base::id::{PipelineId, WebViewId};
 use servo_base::{Epoch, generic_channel};
 use servo_config::pref;
 use servo_constellation_traits::{NavigationHistoryBehavior, ScriptToConstellationMessage};
@@ -649,11 +649,18 @@ pub(crate) struct Document {
     /// <https://html.spec.whatwg.org/multipage/#timers>
     #[conditional_malloc_size_of]
     timers: Rc<OneshotTimers>,
+
+    #[no_trace]
+    pipeline_id: PipelineId,
 }
 
 impl Document {
     pub(crate) fn timers(&self) -> Rc<OneshotTimers> {
         self.timers.clone()
+    }
+
+    pub(crate) fn pipeline_id(&self) -> PipelineId {
+        self.pipeline_id
     }
 
     /// <https://html.spec.whatwg.org/multipage/#unloading-document-cleanup-steps>
@@ -3506,6 +3513,7 @@ impl Document {
         has_trustworthy_ancestor_origin: bool,
         custom_element_reaction_stack: Rc<CustomElementReactionStack>,
         creation_sandboxing_flag_set: SandboxingFlagSet,
+        pipeline_id: PipelineId,
         can_gc: CanGc,
     ) -> Document {
         let url = url.unwrap_or_else(|| ServoUrl::parse("about:blank").unwrap());
@@ -3688,6 +3696,7 @@ impl Document {
             default_single_line_container_name: Default::default(),
             css_styling_flag: Default::default(),
             timers: Rc::new(OneshotTimers::new(window.upcast())),
+            pipeline_id,
         }
     }
 
@@ -3806,6 +3815,7 @@ impl Document {
         has_trustworthy_ancestor_origin: bool,
         custom_element_reaction_stack: Rc<CustomElementReactionStack>,
         creation_sandboxing_flag_set: SandboxingFlagSet,
+        pipeline_id: PipelineId,
         can_gc: CanGc,
     ) -> DomRoot<Document> {
         Self::new_with_proto(
@@ -3830,6 +3840,7 @@ impl Document {
             has_trustworthy_ancestor_origin,
             custom_element_reaction_stack,
             creation_sandboxing_flag_set,
+            pipeline_id,
             can_gc,
         )
     }
@@ -3857,6 +3868,7 @@ impl Document {
         has_trustworthy_ancestor_origin: bool,
         custom_element_reaction_stack: Rc<CustomElementReactionStack>,
         creation_sandboxing_flag_set: SandboxingFlagSet,
+        pipeline_id: PipelineId,
         can_gc: CanGc,
     ) -> DomRoot<Document> {
         let document = reflect_dom_object_with_proto(
@@ -3881,6 +3893,7 @@ impl Document {
                 has_trustworthy_ancestor_origin,
                 custom_element_reaction_stack,
                 creation_sandboxing_flag_set,
+                pipeline_id,
                 can_gc,
             )),
             window,
@@ -4029,6 +4042,7 @@ impl Document {
                     self.has_trustworthy_ancestor_or_current_origin(),
                     self.custom_element_reaction_stack.clone(),
                     self.creation_sandboxing_flag_set(),
+                    self.pipeline_id(),
                     can_gc,
                 );
                 new_doc
@@ -4723,6 +4737,7 @@ impl DocumentMethods<crate::DomTypeHolder> for Document {
             doc.has_trustworthy_ancestor_or_current_origin(),
             doc.custom_element_reaction_stack(),
             doc.active_sandboxing_flag_set.get(),
+            doc.pipeline_id(),
             can_gc,
         ))
     }
@@ -4773,6 +4788,7 @@ impl DocumentMethods<crate::DomTypeHolder> for Document {
             doc.has_trustworthy_ancestor_or_current_origin(),
             doc.custom_element_reaction_stack(),
             doc.creation_sandboxing_flag_set(),
+            doc.pipeline_id(),
             CanGc::from_cx(cx),
         );
         // Step 4. Parse HTML from string given document and compliantHTML.

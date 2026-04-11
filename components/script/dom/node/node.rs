@@ -3548,6 +3548,7 @@ impl Node {
                     document.has_trustworthy_ancestor_or_current_origin(),
                     document.custom_element_reaction_stack(),
                     document.creation_sandboxing_flag_set(),
+                    document.pipeline_id(),
                     CanGc::from_cx(cx),
                 );
                 // Step 2. If node’s custom element registry’s is scoped is true,

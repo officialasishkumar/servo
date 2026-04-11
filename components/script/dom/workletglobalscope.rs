@@ -47,6 +47,10 @@ pub(crate) struct WorkletGlobalScope {
     to_script_thread_sender: Sender<MainThreadScriptMsg>,
     /// Worklet task executor
     executor: WorkletExecutor,
+
+    #[no_trace]
+    /// The pipeline that created this worklet.
+    pipeline_id: PipelineId,
 }
 
 impl WorkletGlobalScope {
@@ -107,7 +111,6 @@ impl WorkletGlobalScope {
         };
         Self {
             globalscope: GlobalScope::new_inherited(
-                pipeline_id,
                 init.devtools_chan.clone(),
                 init.mem_profiler_chan.clone(),
                 init.time_profiler_chan.clone(),
@@ -127,7 +130,12 @@ impl WorkletGlobalScope {
             base_url,
             to_script_thread_sender: init.to_script_thread_sender.clone(),
             executor,
+            pipeline_id,
         }
+    }
+
+    pub(crate) fn pipeline_id(&self) -> PipelineId {
+        self.pipeline_id
     }
 
     /// Get the JS context.

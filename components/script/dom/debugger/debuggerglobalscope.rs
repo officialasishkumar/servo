@@ -74,6 +74,8 @@ pub(crate) struct DebuggerGlobalScope {
     get_list_frame_result_sender: RefCell<Option<GenericSender<Vec<String>>>>,
     #[no_trace]
     get_environment_result_sender: RefCell<Option<GenericSender<String>>>,
+    #[no_trace]
+    pipeline_id: PipelineId,
 }
 
 impl DebuggerGlobalScope {
@@ -100,7 +102,6 @@ impl DebuggerGlobalScope {
     ) -> DomRoot<Self> {
         let global = Box::new(Self {
             global_scope: GlobalScope::new_inherited(
-                debugger_pipeline_id,
                 script_to_devtools_sender,
                 mem_profiler_chan,
                 time_profiler_chan,
@@ -123,6 +124,7 @@ impl DebuggerGlobalScope {
             get_list_frame_result_sender: RefCell::new(None),
             get_environment_result_sender: RefCell::new(None),
             eval_result_sender: RefCell::new(None),
+            pipeline_id: debugger_pipeline_id,
         });
         let global = DebuggerGlobalScopeBinding::Wrap::<crate::DomTypeHolder>(cx, global);
 
@@ -347,6 +349,10 @@ impl DebuggerGlobalScope {
             event.fire(self.upcast(), can_gc),
             "Guaranteed by DebuggerClearBreakpointEvent::new"
         );
+    }
+
+    pub(crate) fn pipeline_id(&self) -> PipelineId {
+        self.pipeline_id
     }
 }
 

@@ -239,10 +239,6 @@ pub(crate) struct GlobalScope {
     /// <https://w3c.github.io/ServiceWorker/#environment-settings-object-service-worker-object-map>
     worker_map: DomRefCell<HashMapTracedValues<ServiceWorkerId, Dom<ServiceWorker>, FxBuildHasher>>,
 
-    /// Pipeline id associated with this global.
-    #[no_trace]
-    pipeline_id: PipelineId,
-
     /// A flag to indicate whether the developer tools has requested
     /// live updates from the worker.
     devtools_wants_updates: Cell<bool>,
@@ -752,7 +748,6 @@ impl GlobalScope {
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new_inherited(
-        pipeline_id: PipelineId,
         devtools_chan: Option<GenericCallback<ScriptToDevtoolsControlMsg>>,
         mem_profiler_chan: profile_mem::ProfilerChan,
         time_profiler_chan: profile_time::ProfilerChan,
@@ -779,7 +774,6 @@ impl GlobalScope {
             cookie_store: Default::default(),
             indexeddb: Default::default(),
             worker_map: DomRefCell::new(HashMapTracedValues::new_fx()),
-            pipeline_id,
             devtools_wants_updates: Default::default(),
             console_timers: DomRefCell::new(Default::default()),
             module_map: DomRefCell::new(Default::default()),
@@ -2499,7 +2493,17 @@ impl GlobalScope {
 
     /// Get the `PipelineId` for this global scope.
     pub(crate) fn pipeline_id(&self) -> PipelineId {
-        self.pipeline_id
+        if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
+            worker.pipeline_id()
+        } else if let Some(window) = self.downcast::<Window>() {
+            window.pipeline_id()
+        } else if let Some(debugger) = self.downcast::<DebuggerGlobalScope>() {
+            debugger.pipeline_id()
+        } else if let Some(worklet) = self.downcast::<WorkletGlobalScope>() {
+            worklet.pipeline_id()
+        } else {
+            unreachable!("Unsupported global type for pipeline id")
+        }
     }
 
     /// Get the origin for this global scope
@@ -2808,7 +2812,7 @@ impl GlobalScope {
                 // Step 7.3. Otherwise, the user agent may report exception to a developer console.
                 if let Some(ref chan) = self.devtools_chan {
                     let _ = chan.send(ScriptToDevtoolsControlMsg::ReportPageError(
-                        self.pipeline_id,
+                        self.pipeline_id(),
                         PageError {
                             error_message: error_info.message.clone(),
                             source_name: error_info.filename.clone(),

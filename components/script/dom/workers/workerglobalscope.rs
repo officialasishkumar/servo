@@ -319,6 +319,9 @@ pub(crate) struct WorkerGlobalScope {
     /// <https://w3c.github.io/reporting/#windoworworkerglobalscope-endpoints>
     #[no_trace]
     endpoints_list: DomRefCell<Vec<ReportingEndpoint>>,
+
+    #[no_trace]
+    pipeline_id: PipelineId,
 }
 
 impl WorkerGlobalScope {
@@ -345,7 +348,6 @@ impl WorkerGlobalScope {
 
         Self {
             globalscope: GlobalScope::new_inherited(
-                init.pipeline_id,
                 init.to_devtools_sender,
                 init.mem_profiler_chan,
                 init.time_profiler_chan,
@@ -384,6 +386,7 @@ impl WorkerGlobalScope {
             reporting_observer_list: Default::default(),
             report_list: Default::default(),
             endpoints_list: Default::default(),
+            pipeline_id: init.pipeline_id,
         }
     }
 
