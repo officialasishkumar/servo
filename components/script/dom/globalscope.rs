@@ -260,10 +260,6 @@ pub(crate) struct GlobalScope {
     #[no_trace]
     time_profiler_chan: profile_time::ProfilerChan,
 
-    /// A handle for communicating messages to the constellation thread.
-    #[no_trace]
-    script_to_constellation_chan: ScriptToConstellationChan,
-
     /// A handle for communicating messages to the Embedder.
     #[no_trace]
     script_to_embedder_chan: ScriptToEmbedderChan,
@@ -748,7 +744,6 @@ impl GlobalScope {
         devtools_chan: Option<GenericCallback<ScriptToDevtoolsControlMsg>>,
         mem_profiler_chan: profile_mem::ProfilerChan,
         time_profiler_chan: profile_time::ProfilerChan,
-        script_to_constellation_chan: ScriptToConstellationChan,
         script_to_embedder_chan: ScriptToEmbedderChan,
         resource_threads: ResourceThreads,
         storage_threads: StorageThreads,
@@ -776,7 +771,6 @@ impl GlobalScope {
             devtools_chan,
             mem_profiler_chan,
             time_profiler_chan,
-            script_to_constellation_chan,
             script_to_embedder_chan,
             in_error_reporting_mode: Default::default(),
             resource_threads,
@@ -2475,8 +2469,14 @@ impl GlobalScope {
     }
 
     /// Get a sender to the constellation thread.
-    pub(crate) fn script_to_constellation_chan(&self) -> &ScriptToConstellationChan {
-        &self.script_to_constellation_chan
+    pub(crate) fn script_to_constellation_chan(&self) -> ScriptToConstellationChan {
+        if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
+            worker.script_to_constellation_chan()
+        } else if let Some(window) = self.downcast::<Window>() {
+            window.script_to_constellation_chan()
+        } else {
+            unreachable!("Unsupported global for script->constellation channel")
+        }
     }
 
     pub(crate) fn script_to_embedder_chan(&self) -> &ScriptToEmbedderChan {

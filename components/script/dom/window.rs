@@ -953,6 +953,10 @@ impl Window {
     pub(crate) fn timers(&self) -> Rc<OneshotTimers> {
         self.Document().timers()
     }
+
+    pub(crate) fn script_to_constellation_chan(&self) -> ScriptToConstellationChan {
+        self.Document().script_to_constellation_chan()
+    }
 }
 
 #[derive(Debug)]
@@ -3485,10 +3489,7 @@ impl Window {
     }
 
     pub(crate) fn send_to_constellation(&self, msg: ScriptToConstellationMessage) {
-        self.as_global_scope()
-            .script_to_constellation_chan()
-            .send(msg)
-            .unwrap();
+        self.script_to_constellation_chan().send(msg).unwrap();
     }
 
     #[cfg(feature = "webxr")]
@@ -3644,7 +3645,6 @@ impl Window {
         mem_profiler_chan: MemProfilerChan,
         time_profiler_chan: TimeProfilerChan,
         devtools_chan: Option<GenericCallback<ScriptToDevtoolsControlMsg>>,
-        constellation_chan: ScriptToConstellationChan,
         embedder_chan: ScriptToEmbedderChan,
         control_chan: GenericSender<ScriptThreadMessage>,
         pipeline_id: PipelineId,
@@ -3678,7 +3678,6 @@ impl Window {
                 devtools_chan,
                 mem_profiler_chan,
                 time_profiler_chan,
-                constellation_chan,
                 embedder_chan,
                 resource_threads,
                 storage_threads,

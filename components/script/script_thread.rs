@@ -765,10 +765,6 @@ impl ScriptThread {
                         mem_profiler_chan: script_thread.senders.memory_profiler_sender.clone(),
                         time_profiler_chan: script_thread.senders.time_profiler_sender.clone(),
                         devtools_chan: script_thread.senders.devtools_server_sender.clone(),
-                        to_constellation_sender: script_thread
-                            .senders
-                            .pipeline_to_constellation_sender
-                            .clone(),
                         to_embedder_sender: script_thread
                             .senders
                             .pipeline_to_embedder_sender
@@ -3418,7 +3414,6 @@ impl ScriptThread {
             self.senders.memory_profiler_sender.clone(),
             self.senders.time_profiler_sender.clone(),
             self.senders.devtools_server_sender.clone(),
-            script_to_constellation_chan,
             self.senders.pipeline_to_embedder_sender.clone(),
             self.senders.constellation_sender.clone(),
             incomplete.pipeline_id,
@@ -3527,6 +3522,7 @@ impl ScriptThread {
             self.custom_element_reaction_stack.clone(),
             incomplete.load_data.creation_sandboxing_flag_set,
             incomplete.pipeline_id,
+            script_to_constellation_chan,
             CanGc::from_cx(cx),
         );
 

@@ -193,6 +193,7 @@ impl DOMImplementationMethods<crate::DomTypeHolder> for DOMImplementation {
             self.document.custom_element_reaction_stack(),
             self.document.creation_sandboxing_flag_set(),
             self.document.pipeline_id(),
+            self.document.script_to_constellation_chan(),
             CanGc::from_cx(cx),
         );
 

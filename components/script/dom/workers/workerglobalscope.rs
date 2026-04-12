@@ -29,7 +29,7 @@ use script_bindings::trace::CustomTraceable;
 use servo_base::cross_process_instant::CrossProcessInstant;
 use servo_base::generic_channel::{GenericSend, GenericSender, RoutedReceiver};
 use servo_base::id::{PipelineId, PipelineNamespace};
-use servo_constellation_traits::WorkerGlobalScopeInit;
+use servo_constellation_traits::{ScriptToConstellationChan, WorkerGlobalScopeInit};
 use servo_url::{MutableOrigin, ServoUrl};
 use timers::TimerScheduler;
 use uuid::Uuid;
@@ -327,6 +327,10 @@ pub(crate) struct WorkerGlobalScope {
     /// A [`TaskManager`] for this [`WorkerGlobalScope`].
     #[conditional_malloc_size_of]
     task_manager: Rc<TaskManager>,
+
+    /// A handle for communicating messages to the constellation thread.
+    #[no_trace]
+    script_to_constellation_chan: ScriptToConstellationChan,
 }
 
 impl WorkerGlobalScope {
@@ -357,7 +361,6 @@ impl WorkerGlobalScope {
                 init.to_devtools_sender,
                 init.mem_profiler_chan,
                 init.time_profiler_chan,
-                init.script_to_constellation_chan,
                 init.script_to_embedder_chan,
                 init.resource_threads,
                 init.storage_threads,
@@ -398,7 +401,12 @@ impl WorkerGlobalScope {
                 init.pipeline_id,
                 Some(TaskCanceller { cancelled: closing }),
             )),
+            script_to_constellation_chan: init.script_to_constellation_chan,
         }
+    }
+
+    pub(crate) fn script_to_constellation_chan(&self) -> ScriptToConstellationChan {
+        self.script_to_constellation_chan.clone()
     }
 
     pub(crate) fn timers(&self) -> Rc<OneshotTimers> {
