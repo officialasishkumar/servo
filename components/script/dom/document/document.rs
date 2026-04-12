@@ -201,6 +201,7 @@ use crate::script_runtime::CanGc;
 use crate::script_thread::ScriptThread;
 use crate::stylesheet_set::StylesheetSetRef;
 use crate::task::NonSendTaskBox;
+use crate::task_manager::TaskManager;
 use crate::task_source::TaskSourceName;
 use crate::timers::{OneshotTimerCallback, OneshotTimers};
 use crate::xpath::parse_expression;
@@ -652,9 +653,17 @@ pub(crate) struct Document {
 
     #[no_trace]
     pipeline_id: PipelineId,
+
+    /// A [`TaskManager`] for this [`Window`].
+    #[conditional_malloc_size_of]
+    task_manager: Rc<TaskManager>,
 }
 
 impl Document {
+    pub(crate) fn task_manager(&self) -> Rc<TaskManager> {
+        self.task_manager.clone()
+    }
+
     pub(crate) fn timers(&self) -> Rc<OneshotTimers> {
         self.timers.clone()
     }
@@ -3697,6 +3706,11 @@ impl Document {
             css_styling_flag: Default::default(),
             timers: Rc::new(OneshotTimers::new(window.upcast())),
             pipeline_id,
+            task_manager: Rc::new(TaskManager::new(
+                Some(window.event_loop_sender()),
+                pipeline_id,
+                None,
+            )),
         }
     }
 

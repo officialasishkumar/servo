@@ -84,6 +84,7 @@ use crate::realms::enter_auto_realm;
 use crate::script_module::ScriptFetchOptions;
 use crate::script_runtime::{CanGc, IntroductionType, JSContext, JSContextHelper, Runtime};
 use crate::task::TaskCanceller;
+use crate::task_manager::TaskManager;
 use crate::timers::{IsInterval, OneshotTimers, TimerCallback};
 
 pub(crate) fn prepare_workerscope_init(
@@ -322,6 +323,10 @@ pub(crate) struct WorkerGlobalScope {
 
     #[no_trace]
     pipeline_id: PipelineId,
+
+    /// A [`TaskManager`] for this [`WorkerGlobalScope`].
+    #[conditional_malloc_size_of]
+    task_manager: Rc<TaskManager>,
 }
 
 impl WorkerGlobalScope {
@@ -337,6 +342,7 @@ impl WorkerGlobalScope {
         #[cfg(feature = "webgpu")] gpu_id_hub: Arc<IdentityHub>,
         insecure_requests_policy: InsecureRequestsPolicy,
         font_context: Option<Arc<FontContext>>,
+        event_loop_sender: Option<ScriptEventLoopSender>,
     ) -> Self {
         // Install a pipeline-namespace in the current thread.
         PipelineNamespace::auto_install();
@@ -369,7 +375,7 @@ impl WorkerGlobalScope {
             worker_name,
             worker_type,
             worker_url: DomRefCell::new(worker_url),
-            closing,
+            closing: closing.clone(),
             execution_ready: AtomicBool::new(false),
             runtime: DomRefCell::new(Some(runtime)),
             location: Default::default(),
@@ -387,6 +393,11 @@ impl WorkerGlobalScope {
             report_list: Default::default(),
             endpoints_list: Default::default(),
             pipeline_id: init.pipeline_id,
+            task_manager: Rc::new(TaskManager::new(
+                event_loop_sender,
+                init.pipeline_id,
+                Some(TaskCanceller { cancelled: closing }),
+            )),
         }
     }
 
@@ -469,7 +480,11 @@ impl WorkerGlobalScope {
     }
 
     pub(crate) fn pipeline_id(&self) -> PipelineId {
-        self.globalscope.pipeline_id()
+        self.pipeline_id
+    }
+
+    pub(crate) fn task_manager(&self) -> Rc<TaskManager> {
+        self.task_manager.clone()
     }
 
     pub(crate) fn policy_container(&self) -> Ref<'_, PolicyContainer> {
@@ -536,14 +551,6 @@ impl WorkerGlobalScope {
     /// Get a mutable reference to the [`TimerScheduler`] for this [`ServiceWorkerGlobalScope`].
     pub(crate) fn timer_scheduler(&self) -> RefMut<'_, TimerScheduler> {
         self.timer_scheduler.borrow_mut()
-    }
-
-    /// Return a copy to the shared task canceller that is used to cancel all tasks
-    /// when this worker is closing.
-    pub(crate) fn shared_task_canceller(&self) -> TaskCanceller {
-        TaskCanceller {
-            cancelled: self.closing.clone(),
-        }
     }
 
     /// <https://html.spec.whatwg.org/multipage/#initialize-worker-policy-container> and
