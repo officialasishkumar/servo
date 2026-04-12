@@ -305,8 +305,7 @@ pub(crate) struct WorkerGlobalScope {
 
     /// The mechanism by which time-outs and intervals are scheduled.
     /// <https://html.spec.whatwg.org/multipage/#timers>
-    #[conditional_malloc_size_of]
-    timers: OnceCell<Rc<OneshotTimers>>,
+    timers: OnceCell<OneshotTimers>,
 
     #[no_trace]
     insecure_requests_policy: InsecureRequestsPolicy,
@@ -409,10 +408,9 @@ impl WorkerGlobalScope {
         self.script_to_constellation_chan.clone()
     }
 
-    pub(crate) fn timers(&self) -> Rc<OneshotTimers> {
+    pub(crate) fn timers(&self) -> &OneshotTimers {
         self.timers
-            .get_or_init(|| Rc::new(OneshotTimers::new(self.upcast())))
-            .clone()
+            .get_or_init(|| OneshotTimers::new(self.upcast()))
     }
 
     pub(crate) fn enqueue_microtask(&self, job: Microtask) {

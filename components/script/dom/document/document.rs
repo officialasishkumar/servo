@@ -650,8 +650,7 @@ pub(crate) struct Document {
 
     /// The mechanism by which time-outs and intervals are scheduled.
     /// <https://html.spec.whatwg.org/multipage/#timers>
-    #[conditional_malloc_size_of]
-    timers: Rc<OneshotTimers>,
+    timers: OneshotTimers,
 
     #[no_trace]
     pipeline_id: PipelineId,
@@ -674,8 +673,8 @@ impl Document {
         self.task_manager.clone()
     }
 
-    pub(crate) fn timers(&self) -> Rc<OneshotTimers> {
-        self.timers.clone()
+    pub(crate) fn timers(&self) -> &OneshotTimers {
+        &self.timers
     }
 
     pub(crate) fn pipeline_id(&self) -> PipelineId {
@@ -3715,7 +3714,7 @@ impl Document {
             value_override: Default::default(),
             default_single_line_container_name: Default::default(),
             css_styling_flag: Default::default(),
-            timers: Rc::new(OneshotTimers::new(window.upcast())),
+            timers: OneshotTimers::new(window.upcast()),
             pipeline_id,
             task_manager: Rc::new(TaskManager::new(
                 Some(window.event_loop_sender()),

@@ -950,8 +950,9 @@ impl Window {
         }
     }
 
-    pub(crate) fn timers(&self) -> Rc<OneshotTimers> {
-        self.Document().timers()
+    pub(crate) fn with_timers<T>(&self, f: impl FnOnce(&OneshotTimers) -> T) -> T {
+        let document = self.Document();
+        f(document.timers())
     }
 
     pub(crate) fn script_to_constellation_chan(&self) -> ScriptToConstellationChan {
