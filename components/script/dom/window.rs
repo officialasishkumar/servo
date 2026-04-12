@@ -196,7 +196,7 @@ use crate::script_runtime::{CanGc, JSContext as SafeJSContext, Runtime};
 use crate::script_thread::ScriptThread;
 use crate::script_window_proxies::ScriptWindowProxies;
 use crate::task_source::SendableTaskSource;
-use crate::timers::{IsInterval, TimerCallback};
+use crate::timers::{IsInterval, OneshotTimers, TimerCallback};
 use crate::unminify::unminified_path;
 use crate::webdriver_handlers::{find_node_by_unique_id_in_document, jsval_to_webdriver};
 use crate::{fetch, window_named_properties};
@@ -947,6 +947,10 @@ impl Window {
         unsafe {
             JS_GC(*self.get_cx(), GCReason::API);
         }
+    }
+
+    pub(crate) fn timers(&self) -> Rc<OneshotTimers> {
+        self.Document().timers()
     }
 }
 

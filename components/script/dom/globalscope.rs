@@ -288,10 +288,6 @@ pub(crate) struct GlobalScope {
     #[no_trace]
     storage_threads: StorageThreads,
 
-    /// The mechanism by which time-outs and intervals are scheduled.
-    /// <https://html.spec.whatwg.org/multipage/#timers>
-    timers: OnceCell<OneshotTimers>,
-
     /// The origin of the globalscope
     #[no_trace]
     origin: MutableOrigin,
@@ -795,7 +791,6 @@ impl GlobalScope {
             in_error_reporting_mode: Default::default(),
             resource_threads,
             storage_threads,
-            timers: OnceCell::default(),
             origin,
             creation_url: DomRefCell::new(creation_url),
             top_level_creation_url,
@@ -844,8 +839,14 @@ impl GlobalScope {
         false
     }
 
-    fn timers(&self) -> &OneshotTimers {
-        self.timers.get_or_init(|| OneshotTimers::new(self))
+    fn timers(&self) -> Rc<OneshotTimers> {
+        if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
+            worker.timers()
+        } else if let Some(window) = self.downcast::<Window>() {
+            window.timers()
+        } else {
+            unreachable!("Unsupported global type retrieving timers")
+        }
     }
 
     pub(crate) fn font_context(&self) -> Option<&Arc<FontContext>> {
