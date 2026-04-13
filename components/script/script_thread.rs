@@ -83,8 +83,7 @@ use servo_base::cross_process_instant::CrossProcessInstant;
 use servo_base::generic_channel;
 use servo_base::generic_channel::GenericSender;
 use servo_base::id::{
-    BrowsingContextId, HistoryStateId, PipelineId, PipelineNamespace, ScriptEventLoopId,
-    TEST_WEBVIEW_ID, WebViewId,
+    BrowsingContextId, HistoryStateId, PipelineId, PipelineNamespace, ScriptEventLoopId, WebViewId,
 };
 use servo_canvas_traits::webgl::WebGLPipeline;
 use servo_config::{opts, pref, prefs};
@@ -772,6 +771,10 @@ impl ScriptThread {
                         image_cache,
                         #[cfg(feature = "webgpu")]
                         gpu_id_hub: script_thread.gpu_id_hub.clone(),
+                        script_to_constellation_sender: script_thread
+                            .senders
+                            .pipeline_to_constellation_sender
+                            .clone(),
                     };
                     Rc::new(WorkletThreadPool::spawn(init))
                 })
@@ -934,22 +937,13 @@ impl ScriptThread {
         #[cfg(feature = "webgpu")]
         let gpu_id_hub = Arc::new(IdentityHub::default());
 
-        let debugger_pipeline_id = PipelineId::new();
-        let script_to_constellation_chan = ScriptToConstellationChan {
-            sender: senders.pipeline_to_constellation_sender.clone(),
-            // This channel is not expected to be used, so the `WebViewId` that we set here
-            // does not matter.
-            // TODO: Look at ways of removing the channel entirely for debugger globals.
-            webview_id: TEST_WEBVIEW_ID,
-            pipeline_id: debugger_pipeline_id,
-        };
         let debugger_global = DebuggerGlobalScope::new(
             PipelineId::new(),
             senders.devtools_server_sender.clone(),
             senders.devtools_client_to_script_thread_sender.clone(),
             senders.memory_profiler_sender.clone(),
             senders.time_profiler_sender.clone(),
-            script_to_constellation_chan,
+            senders.pipeline_to_constellation_sender.clone(),
             senders.pipeline_to_embedder_sender.clone(),
             state.resource_threads.clone(),
             state.storage_threads.clone(),
@@ -3415,6 +3409,7 @@ impl ScriptThread {
             self.senders.time_profiler_sender.clone(),
             self.senders.devtools_server_sender.clone(),
             self.senders.pipeline_to_embedder_sender.clone(),
+            self.senders.pipeline_to_constellation_sender.clone(),
             self.senders.constellation_sender.clone(),
             incomplete.pipeline_id,
             incomplete.parent_info,
@@ -3522,7 +3517,6 @@ impl ScriptThread {
             self.custom_element_reaction_stack.clone(),
             incomplete.load_data.creation_sandboxing_flag_set,
             incomplete.pipeline_id,
-            script_to_constellation_chan,
             CanGc::from_cx(cx),
         );
 

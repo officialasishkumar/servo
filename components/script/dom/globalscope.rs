@@ -60,11 +60,12 @@ use servo_base::generic_channel;
 use servo_base::generic_channel::{GenericCallback, GenericSend};
 use servo_base::id::{
     BlobId, BroadcastChannelRouterId, MessagePortId, MessagePortRouterId, PipelineId,
-    ServiceWorkerId, ServiceWorkerRegistrationId, WebViewId,
+    ServiceWorkerId, ServiceWorkerRegistrationId, TEST_WEBVIEW_ID, WebViewId,
 };
 use servo_constellation_traits::{
     BlobData, BlobImpl, BroadcastChannelMsg, FileBlob, MessagePortImpl, MessagePortMsg,
     PortMessageTask, ScriptToConstellationChan, ScriptToConstellationMessage,
+    ScriptToConstellationSender,
 };
 use servo_url::{ImmutableOrigin, MutableOrigin, ServoUrl};
 use storage_traits::StorageThreads;
@@ -113,6 +114,7 @@ use crate::dom::crypto::Crypto;
 use crate::dom::dedicatedworkerglobalscope::{
     DedicatedWorkerControlMsg, DedicatedWorkerGlobalScope,
 };
+use crate::dom::dissimilaroriginwindow::DissimilarOriginWindow;
 use crate::dom::errorevent::ErrorEvent;
 use crate::dom::event::{Event, EventBubbles, EventCancelable};
 use crate::dom::eventsource::EventSource;
@@ -397,6 +399,10 @@ pub(crate) struct GlobalScope {
     /// <https://fetch.spec.whatwg.org/#environment-settings-object-fetch-group>
     #[no_trace]
     fetch_group: RefCell<FetchGroup>,
+
+    /// A handle for communicating messages to the constellation thread.
+    #[no_trace]
+    script_to_constellation_sender: ScriptToConstellationSender,
 }
 
 /// A wrapper for glue-code between the ipc router and the event-loop.
@@ -745,6 +751,7 @@ impl GlobalScope {
         mem_profiler_chan: profile_mem::ProfilerChan,
         time_profiler_chan: profile_time::ProfilerChan,
         script_to_embedder_chan: ScriptToEmbedderChan,
+        script_to_constellation_sender: ScriptToConstellationSender,
         resource_threads: ResourceThreads,
         storage_threads: StorageThreads,
         origin: MutableOrigin,
@@ -801,6 +808,7 @@ impl GlobalScope {
             resolved_module_set: Default::default(),
             font_context,
             fetch_group: Default::default(),
+            script_to_constellation_sender,
         }
     }
 
@@ -2470,12 +2478,10 @@ impl GlobalScope {
 
     /// Get a sender to the constellation thread.
     pub(crate) fn script_to_constellation_chan(&self) -> ScriptToConstellationChan {
-        if let Some(worker) = self.downcast::<WorkerGlobalScope>() {
-            worker.script_to_constellation_chan()
-        } else if let Some(window) = self.downcast::<Window>() {
-            window.script_to_constellation_chan()
-        } else {
-            unreachable!("Unsupported global for script->constellation channel")
+        ScriptToConstellationChan {
+            sender: self.script_to_constellation_sender.clone(),
+            webview_id: self.webview_id().unwrap_or(TEST_WEBVIEW_ID),
+            pipeline_id: self.pipeline_id(),
         }
     }
 
@@ -2497,6 +2503,8 @@ impl GlobalScope {
             debugger.pipeline_id()
         } else if let Some(worklet) = self.downcast::<WorkletGlobalScope>() {
             worklet.pipeline_id()
+        } else if let Some(dissimilar) = self.downcast::<DissimilarOriginWindow>() {
+            dissimilar.pipeline_id()
         } else {
             unreachable!("Unsupported global type for pipeline id")
         }

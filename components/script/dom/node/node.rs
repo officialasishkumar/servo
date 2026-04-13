@@ -3549,7 +3549,6 @@ impl Node {
                     document.custom_element_reaction_stack(),
                     document.creation_sandboxing_flag_set(),
                     document.pipeline_id(),
-                    document.script_to_constellation_chan(),
                     CanGc::from_cx(cx),
                 );
                 // Step 2. If node’s custom element registry’s is scoped is true,

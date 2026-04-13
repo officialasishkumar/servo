@@ -16,7 +16,7 @@ use net_traits::ResourceThreads;
 use profile_traits::{mem, time};
 use servo_base::generic_channel::{GenericCallback, GenericSender, channel};
 use servo_base::id::{Index, PipelineId, PipelineNamespaceId};
-use servo_constellation_traits::ScriptToConstellationChan;
+use servo_constellation_traits::ScriptToConstellationSender;
 use servo_url::{ImmutableOrigin, MutableOrigin, ServoUrl};
 use storage_traits::StorageThreads;
 
@@ -93,7 +93,7 @@ impl DebuggerGlobalScope {
         devtools_to_script_sender: GenericSender<DevtoolScriptControlMsg>,
         mem_profiler_chan: mem::ProfilerChan,
         time_profiler_chan: time::ProfilerChan,
-        _script_to_constellation_chan: ScriptToConstellationChan,
+        script_to_constellation_sender: ScriptToConstellationSender,
         script_to_embedder_chan: ScriptToEmbedderChan,
         resource_threads: ResourceThreads,
         storage_threads: StorageThreads,
@@ -106,6 +106,7 @@ impl DebuggerGlobalScope {
                 mem_profiler_chan,
                 time_profiler_chan,
                 script_to_embedder_chan,
+                script_to_constellation_sender,
                 resource_threads,
                 storage_threads,
                 MutableOrigin::new(ImmutableOrigin::new_opaque()),

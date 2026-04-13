@@ -29,7 +29,7 @@ use script_bindings::trace::CustomTraceable;
 use servo_base::cross_process_instant::CrossProcessInstant;
 use servo_base::generic_channel::{GenericSend, GenericSender, RoutedReceiver};
 use servo_base::id::{PipelineId, PipelineNamespace};
-use servo_constellation_traits::{ScriptToConstellationChan, WorkerGlobalScopeInit};
+use servo_constellation_traits::WorkerGlobalScopeInit;
 use servo_url::{MutableOrigin, ServoUrl};
 use timers::TimerScheduler;
 use uuid::Uuid;
@@ -99,7 +99,7 @@ pub(crate) fn prepare_workerscope_init(
         to_devtools_sender: global.devtools_chan().cloned(),
         time_profiler_chan: global.time_profiler_chan().clone(),
         from_devtools_sender: devtools_sender,
-        script_to_constellation_chan: global.script_to_constellation_chan().clone(),
+        script_to_constellation_chan: global.script_to_constellation_chan().sender,
         script_to_embedder_chan: global.script_to_embedder_chan().clone(),
         worker_id: worker_id.unwrap_or_else(|| WorkerId(Uuid::new_v4())),
         pipeline_id: global.pipeline_id(),
@@ -326,10 +326,6 @@ pub(crate) struct WorkerGlobalScope {
     /// A [`TaskManager`] for this [`WorkerGlobalScope`].
     #[conditional_malloc_size_of]
     task_manager: Rc<TaskManager>,
-
-    /// A handle for communicating messages to the constellation thread.
-    #[no_trace]
-    script_to_constellation_chan: ScriptToConstellationChan,
 }
 
 impl WorkerGlobalScope {
@@ -361,6 +357,7 @@ impl WorkerGlobalScope {
                 init.mem_profiler_chan,
                 init.time_profiler_chan,
                 init.script_to_embedder_chan,
+                init.script_to_constellation_chan,
                 init.resource_threads,
                 init.storage_threads,
                 MutableOrigin::new(init.origin),
@@ -400,12 +397,7 @@ impl WorkerGlobalScope {
                 init.pipeline_id,
                 Some(TaskCanceller { cancelled: closing }),
             )),
-            script_to_constellation_chan: init.script_to_constellation_chan,
         }
-    }
-
-    pub(crate) fn script_to_constellation_chan(&self) -> ScriptToConstellationChan {
-        self.script_to_constellation_chan.clone()
     }
 
     pub(crate) fn timers(&self) -> &OneshotTimers {

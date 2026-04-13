@@ -75,7 +75,6 @@ impl XMLDocument {
                 custom_element_reaction_stack,
                 window.Document().creation_sandboxing_flag_set(),
                 window.pipeline_id(),
-                window.script_to_constellation_chan(),
                 can_gc,
             ),
         }

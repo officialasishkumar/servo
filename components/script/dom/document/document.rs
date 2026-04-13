@@ -57,9 +57,7 @@ use servo_base::generic_channel::GenericSend;
 use servo_base::id::{PipelineId, WebViewId};
 use servo_base::{Epoch, generic_channel};
 use servo_config::pref;
-use servo_constellation_traits::{
-    NavigationHistoryBehavior, ScriptToConstellationChan, ScriptToConstellationMessage,
-};
+use servo_constellation_traits::{NavigationHistoryBehavior, ScriptToConstellationMessage};
 use servo_media::{ClientContextId, ServoMedia};
 use servo_url::{ImmutableOrigin, MutableOrigin, ServoUrl};
 use style::attr::AttrValue;
@@ -658,17 +656,9 @@ pub(crate) struct Document {
     /// A [`TaskManager`] for this [`Window`].
     #[conditional_malloc_size_of]
     task_manager: Rc<TaskManager>,
-
-    /// A handle for communicating messages to the constellation thread.
-    #[no_trace]
-    script_to_constellation_chan: ScriptToConstellationChan,
 }
 
 impl Document {
-    pub(crate) fn script_to_constellation_chan(&self) -> ScriptToConstellationChan {
-        self.script_to_constellation_chan.clone()
-    }
-
     pub(crate) fn task_manager(&self) -> Rc<TaskManager> {
         self.task_manager.clone()
     }
@@ -3532,7 +3522,6 @@ impl Document {
         custom_element_reaction_stack: Rc<CustomElementReactionStack>,
         creation_sandboxing_flag_set: SandboxingFlagSet,
         pipeline_id: PipelineId,
-        script_to_constellation_chan: ScriptToConstellationChan,
         can_gc: CanGc,
     ) -> Document {
         let url = url.unwrap_or_else(|| ServoUrl::parse("about:blank").unwrap());
@@ -3721,7 +3710,6 @@ impl Document {
                 pipeline_id,
                 None,
             )),
-            script_to_constellation_chan,
         }
     }
 
@@ -3841,7 +3829,6 @@ impl Document {
         custom_element_reaction_stack: Rc<CustomElementReactionStack>,
         creation_sandboxing_flag_set: SandboxingFlagSet,
         pipeline_id: PipelineId,
-        script_to_constellation_chan: ScriptToConstellationChan,
         can_gc: CanGc,
     ) -> DomRoot<Document> {
         Self::new_with_proto(
@@ -3867,7 +3854,6 @@ impl Document {
             custom_element_reaction_stack,
             creation_sandboxing_flag_set,
             pipeline_id,
-            script_to_constellation_chan,
             can_gc,
         )
     }
@@ -3896,7 +3882,6 @@ impl Document {
         custom_element_reaction_stack: Rc<CustomElementReactionStack>,
         creation_sandboxing_flag_set: SandboxingFlagSet,
         pipeline_id: PipelineId,
-        script_to_constellation_chan: ScriptToConstellationChan,
         can_gc: CanGc,
     ) -> DomRoot<Document> {
         let document = reflect_dom_object_with_proto(
@@ -3922,7 +3907,6 @@ impl Document {
                 custom_element_reaction_stack,
                 creation_sandboxing_flag_set,
                 pipeline_id,
-                script_to_constellation_chan,
                 can_gc,
             )),
             window,
@@ -4072,7 +4056,6 @@ impl Document {
                     self.custom_element_reaction_stack.clone(),
                     self.creation_sandboxing_flag_set(),
                     self.pipeline_id(),
-                    self.script_to_constellation_chan(),
                     can_gc,
                 );
                 new_doc
@@ -4768,7 +4751,6 @@ impl DocumentMethods<crate::DomTypeHolder> for Document {
             doc.custom_element_reaction_stack(),
             doc.active_sandboxing_flag_set.get(),
             doc.pipeline_id(),
-            doc.script_to_constellation_chan(),
             can_gc,
         ))
     }
@@ -4820,7 +4802,6 @@ impl DocumentMethods<crate::DomTypeHolder> for Document {
             doc.custom_element_reaction_stack(),
             doc.creation_sandboxing_flag_set(),
             doc.pipeline_id(),
-            doc.script_to_constellation_chan(),
             CanGc::from_cx(cx),
         );
         // Step 4. Parse HTML from string given document and compliantHTML.

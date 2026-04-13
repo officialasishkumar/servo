@@ -1583,7 +1583,6 @@ impl XMLHttpRequest {
             doc.custom_element_reaction_stack(),
             doc.creation_sandboxing_flag_set(),
             doc.pipeline_id(),
-            doc.script_to_constellation_chan(),
             can_gc,
         )
     }

@@ -15,6 +15,7 @@ use profile_traits::{mem, time};
 use script_traits::Painter;
 use servo_base::generic_channel::GenericCallback;
 use servo_base::id::{PipelineId, WebViewId};
+use servo_constellation_traits::ScriptToConstellationSender;
 use servo_url::{ImmutableOrigin, MutableOrigin, ServoUrl};
 use storage_traits::StorageThreads;
 use stylo_atoms::Atom;
@@ -109,6 +110,7 @@ impl WorkletGlobalScope {
                 init.mem_profiler_chan.clone(),
                 init.time_profiler_chan.clone(),
                 init.to_embedder_sender.clone(),
+                init.script_to_constellation_sender.clone(),
                 init.resource_threads.clone(),
                 init.storage_threads.clone(),
                 MutableOrigin::new(ImmutableOrigin::new_opaque()),
@@ -220,6 +222,7 @@ pub(crate) struct WorkletGlobalScopeInit {
     /// Identity manager for WebGPU resources
     #[cfg(feature = "webgpu")]
     pub(crate) gpu_id_hub: Arc<IdentityHub>,
+    pub(crate) script_to_constellation_sender: ScriptToConstellationSender,
 }
 
 /// <https://drafts.css-houdini.org/worklets/#worklet-global-scope-type>
